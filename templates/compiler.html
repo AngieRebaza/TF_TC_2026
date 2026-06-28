@@ -46,7 +46,6 @@
 </section>
 {% endif %}
 
-<!-- ===================== CODIGO FUENTE DSL ===================== -->
 <section class="section">
   <div class="section-head"><div class="section-num">1</div><h2>Código fuente del programa DSL</h2></div>
   <div class="section-body">
@@ -54,7 +53,6 @@
   </div>
 </section>
 
-<!-- ===================== LEXEMAS Y TOKENS ===================== -->
 <section class="section">
   <div class="section-head"><div class="section-num">2</div><h2>Lexemas y tokens identificados</h2></div>
   <div class="section-body">
@@ -103,7 +101,6 @@
   </div>
 </section>
 
-<!-- ===================== AUTOMATAS INTERACTIVOS ===================== -->
 <section class="section">
   <div class="section-head"><div class="section-num">3</div><h2>Autómatas (AFND / AFD) y reconocimiento en vivo</h2></div>
   <div class="section-body">
@@ -137,7 +134,6 @@
   </div>
 </section>
 
-<!-- ===================== ANALISIS POR SENTENCIA ===================== -->
 <section class="section">
   <div class="section-head"><div class="section-num">4</div><h2>Análisis sintáctico y traducción a JSON, sentencia por sentencia</h2></div>
   <div class="section-body">
@@ -170,7 +166,9 @@
                 {% for t in r.tokens %}<span class="token-chip {{ t.tipo }}">{{ t.lexema }} <small>({{ t.tipo }})</small></span>{% endfor %}
               </div>
               <p style="color:var(--ink-soft);font-weight:700;font-family:var(--mono);font-size:11px;text-transform:uppercase;">Árbol sintáctico</p>
-              <pre class="tree-ascii">{{ r.arbol_ascii }}</pre>
+              <div id="arbol-sentencia-{{ r.numero_linea }}" class="arbol-svg-sentencia"
+></div>
+              <script type="application/json" class="arbol-data-{{ r.numero_linea }}">{{ r.arbol | tojson }}</script>
             </div>
             <div>
               <p style="color:var(--ink-soft);font-weight:700;font-family:var(--mono);font-size:11px;text-transform:uppercase;">JSON traducido</p>
@@ -190,7 +188,6 @@
   </div>
 </section>
 
-<!-- ===================== EJEMPLO DESTACADO: ARBOL COMPLETO ===================== -->
 {% if ejemplo_destacado %}
 <section class="section">
   <div class="section-head"><div class="section-num">5</div><h2>Árbol sintáctico destacado</h2></div>
@@ -214,11 +211,8 @@
 
 {% block extra_scripts %}
 <script>
-function toggleRow(headEl){
-  const body = headEl.nextElementSibling;
-  body.classList.toggle('open');
-}
 
+//construcción de SVG genérico para AFND/AFD
 function dibujarAutomataSVG(automata, esAFND, idResaltado){
   const estados = automata.estados;
   const n = estados.length;
@@ -255,7 +249,6 @@ function dibujarAutomataSVG(automata, esAFND, idResaltado){
     }
   });
 
-  // estados
   estados.forEach(e => {
     const p = pos[e];
     const esFinal = automata.estados_finales.includes(e);
@@ -349,8 +342,6 @@ document.getElementById('btnReconocer').addEventListener('click', async () => {
 
 cargarAutomata('PRODUCTO');
 
-// ---------- arbol sintactico ----------
-{% if ejemplo_destacado %}
 function radioNodo(simbolo){
   return Math.min(34, Math.max(22, simbolo.length * 4 + 12));
 }
@@ -386,55 +377,117 @@ function dibujarArbol(nodo, x, y, espacioX, nivel, svgParts){
   }
 }
 
-function renderArbol(arbolDict){
+function construirSVGArbol(arbolDict, centroX, espacioX0, bgColor){
   const parts = {nodos: [], lineas: []};
-  dibujarArbol(arbolDict, 380, 30, 230, 0, parts);
-
-  const radios = parts.nodos.map(n => radioNodo(n.nodo.simbolo));
-  const maxR = Math.max(...radios);
-  const maxY = Math.max(...parts.nodos.map(n => n.y)) + maxR + 20;
-  const minX = Math.min(...parts.nodos.map(n => n.x)) - maxR - 20;
-  const maxX = Math.max(...parts.nodos.map(n => n.x)) + maxR + 20;
-  const vw = Math.max(760, maxX - minX);
+  dibujarArbol(arbolDict, centroX, 30, espacioX0, 0, parts);
+  const radios  = parts.nodos.map(n => radioNodo(n.nodo.simbolo));
+  const maxR    = Math.max(...radios);
+  const maxY    = Math.max(...parts.nodos.map(n => n.y)) + maxR + 20;
+  const minX    = Math.min(...parts.nodos.map(n => n.x)) - maxR - 20;
+  const maxX    = Math.max(...parts.nodos.map(n => n.x)) + maxR + 20;
+  const vw      = Math.max(400, maxX - minX);
   const offsetX = minX < 0 ? -minX : 0;
 
-  let svg = `<svg viewBox="0 0 ${vw} ${maxY + 10}" xmlns="http://www.w3.org/2000/svg">`;
+  let svg = `<svg viewBox="0 0 ${vw} ${maxY}" xmlns="http://www.w3.org/2000/svg"
+    style="width:100%;height:auto;display:block;background:${bgColor || '#fff'};border-radius:6px;border:1px solid var(--rule-strong);">`;
 
   parts.lineas.forEach(l => {
-    svg += `<line x1="${l.x1 + offsetX}" y1="${l.y1}" x2="${l.x2 + offsetX}" y2="${l.y2}"
-      stroke="#B7AF98" stroke-width="1.6"/>`;
+    svg += `<line x1="${l.x1+offsetX}" y1="${l.y1}" x2="${l.x2+offsetX}" y2="${l.y2}" stroke="#B7AF98" stroke-width="1.5"/>`;
   });
-
   parts.nodos.forEach(n => {
-    const cx = n.x + offsetX;
-    const cy = n.y;
+    const cx = n.x + offsetX, cy = n.y;
     const esRaiz     = n.nodo.simbolo === 'S';
     const esTerminal = n.nodo.es_terminal;
-
     const fill   = esRaiz ? '#1B1D1B' : esTerminal ? '#F4E7D4' : '#E4EFE7';
-    const stroke = esRaiz ? '#1B1D1B' : esTerminal ? '#B4711F'  : '#1F6E4C';
+    const stroke = esRaiz ? '#1B1D1B' : esTerminal ? '#B4711F' : '#1F6E4C';
     const sw     = esRaiz ? 0 : 2;
-    const textFill = esRaiz ? '#FFFEFB' : stroke;
-
-    const r = radioNodo(n.nodo.simbolo);
-
+    const r      = radioNodo(n.nodo.simbolo);
+    const fs     = fontNodo(n.nodo.simbolo, esRaiz);
     svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
-
     if (esTerminal){
-      svg += `<circle cx="${cx}" cy="${cy}" r="${r - 4}" fill="none" stroke="${stroke}" stroke-width="1" stroke-dasharray="3 3" opacity="0.55"/>`;
+      svg += `<circle cx="${cx}" cy="${cy}" r="${r-4}" fill="none" stroke="${stroke}" stroke-width="1" stroke-dasharray="3 3" opacity="0.55"/>`;
     }
-
-    const fs = fontNodo(n.nodo.simbolo, esRaiz);
     svg += `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle"
       font-family="JetBrains Mono" font-size="${fs}" font-weight="700"
-      fill="${textFill}">${n.nodo.simbolo}</text>`;
+      fill="${esRaiz ? '#FFFEFB' : stroke}">${n.nodo.simbolo}</text>`;
   });
-
-  svg += `</svg>`;
-  document.getElementById('arbolSvgDestacado').innerHTML = svg;
+  svg += '</svg>';
+  return svg;
 }
 
+{% if ejemplo_destacado %}
+function renderArbol(arbolDict){
+  const svg = construirSVGArbol(arbolDict, 380, 230, 'transparent');
+  document.getElementById('arbolSvgDestacado').innerHTML = svg;
+}
 renderArbol({{ ejemplo_destacado.arbol | tojson }});
 {% endif %}
+
+function renderArbolesIndividuales(){
+  document.querySelectorAll('.arbol-svg-sentencia').forEach(div => {
+    const raw = div.getAttribute('data-arbol');
+    if (!raw) return;
+    try {
+      const arbolDict = JSON.parse(raw);
+      const parts = {nodos: [], lineas: []};
+      dibujarArbol(arbolDict, 200, 28, 130, 0, parts);
+
+      const radios = parts.nodos.map(n => radioNodo(n.nodo.simbolo));
+      const maxR   = Math.max(...radios);
+      const maxY   = Math.max(...parts.nodos.map(n => n.y)) + maxR + 20;
+      const minX   = Math.min(...parts.nodos.map(n => n.x)) - maxR - 20;
+      const maxX   = Math.max(...parts.nodos.map(n => n.x)) + maxR + 20;
+      const vw     = Math.max(400, maxX - minX);
+      const offsetX = minX < 0 ? -minX : 0;
+
+      let svg = `<svg viewBox="0 0 ${vw} ${maxY}" xmlns="http://www.w3.org/2000/svg"
+        style="width:100%;height:auto;display:block;background:#fff;border-radius:6px;border:1px solid var(--rule-strong);">`;
+
+      parts.lineas.forEach(l => {
+        svg += `<line x1="${l.x1+offsetX}" y1="${l.y1}" x2="${l.x2+offsetX}" y2="${l.y2}"
+          stroke="#B7AF98" stroke-width="1.5"/>`;
+      });
+
+      parts.nodos.forEach(n => {
+        const cx = n.x + offsetX, cy = n.y;
+        const esRaiz     = n.nodo.simbolo === 'S';
+        const esTerminal = n.nodo.es_terminal;
+        const fill   = esRaiz ? '#1B1D1B' : esTerminal ? '#F4E7D4' : '#E4EFE7';
+        const stroke = esRaiz ? '#1B1D1B' : esTerminal ? '#B4711F'  : '#1F6E4C';
+        const sw     = esRaiz ? 0 : 2;
+        const textFill = esRaiz ? '#FFFEFB' : stroke;
+        const r = radioNodo(n.nodo.simbolo);
+        const fs = fontNodo(n.nodo.simbolo, esRaiz);
+
+        svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+        if (esTerminal){
+          svg += `<circle cx="${cx}" cy="${cy}" r="${r-4}" fill="none" stroke="${stroke}" stroke-width="1" stroke-dasharray="3 3" opacity="0.55"/>`;
+        }
+        svg += `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle"
+          font-family="JetBrains Mono" font-size="${fs}" font-weight="700"
+          fill="${textFill}">${n.nodo.simbolo}</text>`;
+      });
+
+      svg += '</svg>';
+      div.innerHTML = svg;
+    } catch(e){ console.error('Error renderizando arbol:', e); }
+  });
+}
+
+
+function toggleRow(headEl){
+  const body = headEl.nextElementSibling;
+  body.classList.toggle('open');
+  if (body.classList.contains('open')){
+    const divArbol = body.querySelector('.arbol-svg-sentencia');
+    if (divArbol && !divArbol.querySelector('svg')){
+      try {
+        const scriptTag = divArbol.nextElementSibling;
+        const arbolDict = JSON.parse(scriptTag.textContent);
+        divArbol.innerHTML = construirSVGArbol(arbolDict, 200, 130, '#fff');
+      } catch(e){ console.error('Error arbol sentencia:', e); }
+    }
+  }
+}
 </script>
 {% endblock %}
